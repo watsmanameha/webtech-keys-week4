@@ -1,49 +1,46 @@
 const express = require('express');
-const https = require('https');
+const multer = require('multer');
+const { PNG } = require('pngjs');
 
 const app = express();
-const LOGIN = "edzhulaj";
+const upload = multer({ storage: multer.memoryStorage() });
 
+const LOGIN = 'edzhulaj';
+
+// Маршрут /login — возвращаем логин
 app.get('/login', (req, res) => {
-    res.type('text/plain').send(LOGIN);
+  res.type('text/plain').send(LOGIN);
 });
 
-app.get('/id/:N', (req, res) => {
-    const N = req.params.N;
-    const options = {
-        hostname: 'nd.kodaktor.ru',
-        path: `/users/${N}`,
-        method: 'GET',
-        headers: {
-            // Content-Type заголовок отсутствует намеренно
-        }
-    };
+// Маршрут /size2json — ждем поле "image" в multipart/form-data (PNG)
+app.put('/size2json', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).type('application/json')
+        .send(JSON.stringify({ error: 'No image field "image" provided' }));
+    }
 
-    https.get(options, (response) => {
-        let data = '';
+    const buffer = req.file.buffer;
 
-        response.on('data', (chunk) => {
-            data += chunk;
-        });
+    // Попытка прочитать PNG
+    let png;
+    try {
+      png = PNG.sync.read(buffer);
+    } catch (err) {
+      return res.status(400).type('application/json')
+        .send(JSON.stringify({ error: 'Invalid PNG image' }));
+    }
 
-        response.on('end', () => {
-            try {
-                const json = JSON.parse(data);
-                if (json.login) {
-                    res.type('text/plain').send(json.login);
-                } else {
-                    res.status(404).send('Login field not found');
-                }
-            } catch (e) {
-                res.status(500).send('Ошибка обработки данных');
-            }
-        });
-    }).on('error', (err) => {
-        res.status(500).send('Ошибка запроса к удалённому серверу');
-    });
+    const result = { width: png.width, height: png.height };
+    res.type('application/json').send(JSON.stringify(result));
+  } catch (err) {
+    console.error(err);
+    res.status(500).type('application/json').send(JSON.stringify({ error: 'Internal server error' }));
+  }
 });
 
+// Запуск сервера
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
+  console.log(`${PORT}`);
 });
