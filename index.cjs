@@ -1,46 +1,36 @@
 const express = require('express');
 const multer = require('multer');
-const { PNG } = require('pngjs');
+const sharp = require('sharp');
+const https = require('https');
+const fs = require('fs');
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer(); // сохраняем в оперативной памяти
 
-const LOGIN = 'edzhulaj';
+const LOGIN = "edzhulaj";
 
-// Маршрут /login — возвращаем логин
 app.get('/login', (req, res) => {
-  res.type('text/plain').send(LOGIN);
+    res.type('text/plain').send(LOGIN);
 });
 
-// Маршрут /size2json — ждем поле "image" в multipart/form-data (PNG)
-app.put('/size2json', upload.single('image'), (req, res) => {
-  try {
-    if (!req.file || !req.file.buffer) {
-      return res.status(400).type('application/json')
-        .send(JSON.stringify({ error: 'No image field "image" provided' }));
-    }
-
-    const buffer = req.file.buffer;
-
-    // Попытка прочитать PNG
-    let png;
+app.post("/size2json", upload.single("image"), async (req, res) => {
     try {
-      png = PNG.sync.read(buffer);
-    } catch (err) {
-      return res.status(400).type('application/json')
-        .send(JSON.stringify({ error: 'Invalid PNG image' }));
-    }
+        if (!req.file) {
+            return res.status(400).json({ error: "Не передано поле image" });
+        }
 
-    const result = { width: png.width, height: png.height };
-    res.type('application/json').send(JSON.stringify(result));
-  } catch (err) {
-    console.error(err);
-    res.status(500).type('application/json').send(JSON.stringify({ error: 'Internal server error' }));
-  }
+        const metadata = await sharp(req.file.buffer).metadata();
+
+        res.json({
+            width: metadata.width,
+            height: metadata.height
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Ошибка обработки изображения" });
+    }
 });
 
-// Запуск сервера
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`${PORT}`);
+    console.log(`Сервер запущен на порту ${PORT}`);
 });
