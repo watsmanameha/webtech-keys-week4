@@ -1,48 +1,49 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const bodyParser = require("body-parser");
-const http = require("http");
+const express = require('express');
+const https = require('https');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const LOGIN = "edzhulaj";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-  "Access-Control-Allow-Headers":
-    "x-test,ngrok-skip-browser-warning,Content-Type,Accept,Access-Control-Allow-Headers",
-};
-
-const s = http.createServer((req, res) => {
-  if (req.url === "/result4/") {
-    let body = "";
-
-    req.on("data", (chunk) => {
-      body += chunk;
-    });
-
-    req.on("end", () => {
-      let parsedBody = body;
-
-      res.writeHead(200, { ...CORS });
-
-      res.write(
-        JSON.stringify({
-          message: "c23defe5-07d3-4de0-b01a-32c82d7fcfc1",
-          "x-result": req.headers["x-test"],
-          "x-body": String(parsedBody),
-        })
-      );
-
-      res.end();
-    });
-
-    return;
-  }
-
-  res.end();
+app.get('/login', (req, res) => {
+    res.type('text/plain').send(LOGIN);
 });
 
-s.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.get('/id/:N', (req, res) => {
+    const N = req.params.N;
+    const options = {
+        hostname: 'nd.kodaktor.ru',
+        path: `/users/${N}`,
+        method: 'GET',
+        headers: {
+            // Content-Type заголовок отсутствует намеренно
+        }
+    };
+
+    https.get(options, (response) => {
+        let data = '';
+
+        response.on('data', (chunk) => {
+            data += chunk;
+        });
+
+        response.on('end', () => {
+            try {
+                const json = JSON.parse(data);
+                if (json.login) {
+                    res.type('text/plain').send(json.login);
+                } else {
+                    res.status(404).send('Login field not found');
+                }
+            } catch (e) {
+                res.status(500).send('Ошибка обработки данных');
+            }
+        });
+    }).on('error', (err) => {
+        res.status(500).send('Ошибка запроса к удалённому серверу');
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
 });
