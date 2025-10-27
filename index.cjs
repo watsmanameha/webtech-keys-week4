@@ -3,7 +3,7 @@ const multer = require('multer');
 
 const app = express();
 
-const LOGIN = "edzhulaj";
+const LOGIN = "c23defe5-07d3-4de0-b01a-32c82d7fcfc1";
 
 app.get('/login', (req, res) => {
     res.type('text/plain').send(LOGIN);
